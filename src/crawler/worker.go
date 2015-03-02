@@ -4,7 +4,6 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
-	"os"
 	"regexp"
 	"strings"
 	"time"
@@ -17,12 +16,11 @@ var (
 	client       = http.Client{Transport: &transport}
 )
 
-func StartWorkers() {
+func startWorkers() {
 	log.Info("Starting up workers...")
 	for i := 0; i < WCOUNT; i++ {
-		wg.Add(1)
 		log.Debug("Starting up worker %d", i)
-		go workerRoutine(QueueChannel)
+		go workerRoutine(queueChannel)
 	}
 	log.Info("Started workers!")
 }
@@ -32,77 +30,60 @@ func dialTimeout(network, addr string) (net.Conn, error) {
 }
 
 func workerRoutine(channel <-chan string) {
-	WorkersCount++
-	//	defer wg.Done()
+	statWorkersCount++
+	defer waitGroup.Done()
 	for {
 		select {
 		case domain := <-channel:
 			if len(channel) > 0 {
+				statOverall++
 				response, error := client.Get(string(strings.Join([]string{"http://", domain}, "")))
 				if error != nil {
-					StatData.domainError++
-					StatData.overall++
+					statDomainError++
 					break
 				}
 				defer response.Body.Close()
 				body, error := ioutil.ReadAll(response.Body)
 				if error != nil {
-					StatData.httpError++
-					StatData.overall++
+					statHttpError++
 					break
 				}
 				applyRegexps(body, domain)
-
 			} else {
-				log.Info("Shutting down worker, (%d) workers left", WorkersCount)
-				WorkersCount--
-				if WorkersCount == 0 {
-					log.Info("Shutting down...")
-					os.Exit(0)
-				}
-				wg.Done()
+				statWorkersCount--
+				log.Info("Shutting down worker, (%d) workers left", statWorkersCount)
 				return
 			}
 		default:
-			log.Info("Shutting down worker!")
-			WorkersCount--
-			wg.Done()
+			statWorkersCount--
+			log.Info("Shutting down worker, (%d) workers left", statWorkersCount)
 			return
 		}
 	}
 }
 
 func applyRegexps(body []byte, host string) {
-	StatData.overall++
 	matchCounter := 0
-	for id, re := range Regexps {
+	for id, re := range regexps {
 		match := re.Match(body)
 		if match {
-			SaveParseResult(id, host)
+			saveParseResult(id, host)
 			matchCounter++
 		}
 	}
 	if matchCounter > 0 {
-		StatData.matched++
+		statMatched++
 	} else {
-		StatData.noMatched++
+		statNoMatched++
 	}
-	tempMap := make(map[string]bool)
+
 	emails := EMAIL_REGEXP.FindAllSubmatch(body, -1)
 	for _, slice := range emails {
-		str := CToGoString(slice[1])
-		if !tempMap[str] {
-			tempMap[str] = true
-		}
-	}
-	if len(tempMap) > 0 {
-		for email, _ := range tempMap {
-			SaveEmailResult(host, email)
-		}
+		saveEmailResult(host, cToGoString(slice[1]))
 	}
 }
 
-func CToGoString(c []byte) string {
+func cToGoString(c []byte) string {
 	n := -1
 	for i, b := range c {
 		if b == 0 {
@@ -114,9 +95,10 @@ func CToGoString(c []byte) string {
 }
 
 func updateQueueSize() {
-	StatData.queueSize = len(QueueChannel)
+	statQueueSize = len(queueChannel)
 }
 
 func printStat() {
-	log.Info("Processed %d domains, including %d matched, %d no matched, %d domain errors, %d http errors and %d domains left", StatData.overall, StatData.matched, StatData.noMatched, StatData.domainError, StatData.httpError, StatData.queueSize)
+	log.Info("Processed %d domains, including %d matched, %d no matched, %d domain errors, %d http errors and %d domains left",
+		statOverall, statMatched, statNoMatched, statDomainError, statHttpError, statQueueSize)
 }

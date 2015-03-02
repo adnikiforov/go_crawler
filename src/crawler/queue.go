@@ -6,10 +6,10 @@ import (
 )
 
 var (
-	QueueChannel chan string
+	queueChannel chan string
 )
 
-func StartQueue() {
+func startQueue() {
 	log.Info("Starting up queue...")
 	csvfile, error := os.Open(CSV_FILE_LOCATION)
 	if error != nil {
@@ -29,11 +29,11 @@ func StartQueue() {
 	}
 
 	queueSize := len(rawCSVdata)
-	QueueChannel = make(chan string, queueSize)
+	queueChannel = make(chan string, queueSize)
 	log.Info("Queue size %d", queueSize)
 	for _, each := range rawCSVdata {
-		QueueChannel <- each[0]
+		queueChannel <- each[0]
 	}
-	close(QueueChannel)
+	close(queueChannel)
 	log.Info("Queue started!")
 }

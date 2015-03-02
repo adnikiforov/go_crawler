@@ -10,7 +10,7 @@ import (
 
 var (
 	dbChannel chan DbObject
-	Regexps   map[int]*regexp.Regexp
+	regexps   map[int]*regexp.Regexp
 )
 
 type DbObject struct {
@@ -18,15 +18,15 @@ type DbObject struct {
 	Value string
 }
 
-func StartDb() {
+func startDb() {
 	dbChannel = make(chan DbObject)
-	wg.Add(1)
+
 	log.Info("Starting up db...")
 	go saveRoutine(dbChannel)
 	log.Info("Started db!")
 }
 
-func UpdateKeyList() {
+func updateKeyList() {
 	client, error := redis.Dial("tcp", "localhost:6379")
 	defer client.Close()
 	if error != nil {
@@ -34,15 +34,8 @@ func UpdateKeyList() {
 		os.Exit(1)
 	}
 
-	keys := make([]int, len(Regexps))
-	i := 0
-	for k := range Regexps {
-		keys[i] = k
-		i += 1
-	}
-
-	for _, id := range keys {
-		key := strings.Join([]string{DateStart, strconv.Itoa(id)}, ":")
+	for id := range regexps {
+		key := strings.Join([]string{dateStart, strconv.Itoa(id)}, ":")
 		error := client.Cmd("SADD", "domain_keys", key).Err
 		if error != nil {
 			log.Error("Redis update keylist error %s", error)
@@ -51,21 +44,21 @@ func UpdateKeyList() {
 	}
 }
 
-func SaveParseResult(regexpId int, domain string) {
+func saveParseResult(regexpId int, domain string) {
 	dbChannel <- DbObject{
-		Key:   strings.Join([]string{DateStart, strconv.Itoa(regexpId)}, ":"),
+		Key:   strings.Join([]string{dateStart, strconv.Itoa(regexpId)}, ":"),
 		Value: domain,
 	}
 }
 
-func SaveEmailResult(domain string, email string) {
+func saveEmailResult(domain string, email string) {
 	dbChannel <- DbObject{
 		Key:   strings.Join([]string{domain, "email"}, ":"),
 		Value: email,
 	}
 }
 
-func LoadRegexps() {
+func loadRegexps() {
 	client, error := redis.Dial("tcp", "localhost:6379")
 	defer client.Close()
 	if error != nil {
@@ -77,20 +70,20 @@ func LoadRegexps() {
 		log.Error("Redis regexp loading error %s", error)
 		os.Exit(1)
 	}
-	Regexps = make(map[int]*regexp.Regexp)
+	regexps = make(map[int]*regexp.Regexp)
 	for key, value := range res {
 		if strings.Split(value, ":")[2] == "active" {
 			conv, err := strconv.Atoi(key)
 			if err != nil {
 				log.Error("Error on regexps reading, check syntax ~s", err)
 			}
-			Regexps[conv] = regexp.MustCompile(strings.Split(value, ":")[1])
+			regexps[conv] = regexp.MustCompile(strings.Split(value, ":")[1])
 		}
 	}
 }
 
 func saveRoutine(channel chan DbObject) {
-	defer wg.Done()
+	defer waitGroup.Done()
 	client, error := redis.Dial("tcp", "localhost:6379")
 	defer client.Close()
 	if error != nil {

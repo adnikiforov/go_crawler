@@ -4,52 +4,55 @@ import (
 	"flag"
 	"fmt"
 	"github.com/op/go-logging"
+	"net/http"
+	_ "net/http/pprof"
 	"sync"
 	"time"
 )
 
 var (
-	DateStart         string
-	wg                sync.WaitGroup
-	WCOUNT            int    = 100
-	CSV_FILE_LOCATION string = "./domains.csv"
-	log                      = logging.MustGetLogger("crawler")
-	format                   = logging.MustStringFormatter("%{color}%{time:15:04:05.000} %{shortfunc} ▶ %{level} %{id:03x}%{color:reset} %{message}")
-	StatData                 = Stat{0, 0, 0, 0, 0, 0}
-	WorkersCount      int64  = 0
+	dateStart string
+	waitGroup sync.WaitGroup
+	log       = logging.MustGetLogger("crawler")
 )
 
-type Stat struct {
-	matched     int64
-	noMatched   int64
-	domainError int64
-	httpError   int64
-	overall     int64
-	queueSize   int
-}
+var (
+	statMatched      int64 = 0
+	statNoMatched    int64 = 0
+	statDomainError  int64 = 0
+	statHttpError    int64 = 0
+	statOverall      int64 = 0
+	statWorkersCount int64 = 0
+	statQueueSize    int   = 0
+)
 
-func fixDate() {
+var (
+	WCOUNT            int    = 100
+	CSV_FILE_LOCATION string = "./domains.csv"
+)
+
+func Run() {
+	//	Run profiler
+	go func() { http.ListenAndServe("localhost:6060", nil) }()
+
+	//	Fix startup date
 	t := time.Now()
-	DateStart = string(fmt.Sprintf("%d.%d.%02d", t.Day(), t.Month(), t.Year()))
-}
+	dateStart = string(fmt.Sprintf("%d.%d.%02d", t.Day(), t.Month(), t.Year()))
 
-func initializeFlags() {
 	flag.IntVar(&WCOUNT, "w", WCOUNT, "Workers count")
 	flag.StringVar(&CSV_FILE_LOCATION, "f", CSV_FILE_LOCATION, "Source file location")
 	flag.Parse()
-}
 
-func Run() {
-	fixDate()
-	initializeFlags()
-	LoadRegexps()
-	UpdateKeyList()
+	loadRegexps()
+	updateKeyList()
+
 	log.Info("Starting up...")
-	StartQueue()
+	startQueue()
 	updateQueueSize()
+	startDb()
 
-	StartDb()
-	StartWorkers()
+	waitGroup.Add(WCOUNT + 1)
+	startWorkers()
 
 	ticker := time.NewTicker(time.Millisecond * 10000)
 	go func() {
@@ -60,6 +63,6 @@ func Run() {
 		}
 	}()
 
-	wg.Wait()
+	waitGroup.Wait()
 	ticker.Stop()
 }
