@@ -12,7 +12,7 @@ import (
 var (
 	EMAIL_REGEXP = regexp.MustCompile("href=[\\'|\"]mailto:([\\d\\w-\\.]+@[\\d\\w-\\.]+\\.[\\d\\w]+)")
 	timeout      = time.Duration(5 * time.Second)
-	transport    = http.Transport{Dial: dialTimeout}
+	transport    = http.Transport{Dial: dialTimeout, DisableKeepAlives: true}
 	client       = http.Client{Transport: &transport}
 )
 
