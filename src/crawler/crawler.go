@@ -9,13 +9,14 @@ import (
 )
 
 var (
-	DateStart    string
-	wg           sync.WaitGroup
-	WCOUNT       int   = 10
-	log                = logging.MustGetLogger("crawler")
-	format             = logging.MustStringFormatter("%{color}%{time:15:04:05.000} %{shortfunc} ▶ %{level} %{id:03x}%{color:reset} %{message}")
-	StatData           = Stat{0, 0, 0, 0, 0, 0}
-	WorkersCount int64 = 0
+	DateStart         string
+	wg                sync.WaitGroup
+	WCOUNT            int    = 100
+	CSV_FILE_LOCATION string = "./domains.csv"
+	log                      = logging.MustGetLogger("crawler")
+	format                   = logging.MustStringFormatter("%{color}%{time:15:04:05.000} %{shortfunc} ▶ %{level} %{id:03x}%{color:reset} %{message}")
+	StatData                 = Stat{0, 0, 0, 0, 0, 0}
+	WorkersCount      int64  = 0
 )
 
 type Stat struct {
@@ -34,6 +35,7 @@ func fixDate() {
 
 func initializeFlags() {
 	flag.IntVar(&WCOUNT, "w", WCOUNT, "Workers count")
+	flag.StringVar(&CSV_FILE_LOCATION, "f", CSV_FILE_LOCATION, "Source file location")
 	flag.Parse()
 }
 

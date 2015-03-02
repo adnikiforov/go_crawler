@@ -11,7 +11,7 @@ var (
 
 func StartQueue() {
 	log.Info("Starting up queue...")
-	csvfile, error := os.Open("/Users/user/Project/crawler/include/example.csv")
+	csvfile, error := os.Open(CSV_FILE_LOCATION)
 	if error != nil {
 		log.Error("Can't parse CSV file, exit with error %s", error)
 		os.Exit(1)

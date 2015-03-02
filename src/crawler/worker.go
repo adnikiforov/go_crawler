@@ -40,7 +40,6 @@ func workerRoutine(channel <-chan string) {
 			if len(channel) > 0 {
 				response, error := client.Get(string(strings.Join([]string{"http://", domain}, "")))
 				if error != nil {
-					//				log.Info("HTTP Error %s", error)
 					StatData.domainError++
 					StatData.overall++
 					break
@@ -48,7 +47,6 @@ func workerRoutine(channel <-chan string) {
 				defer response.Body.Close()
 				body, error := ioutil.ReadAll(response.Body)
 				if error != nil {
-					//				log.Info("Body read error %s", error)
 					StatData.httpError++
 					StatData.overall++
 					break
