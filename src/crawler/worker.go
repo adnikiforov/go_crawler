@@ -33,32 +33,33 @@ func workerRoutine(channel <-chan string) {
 	statWorkersCount++
 	defer waitGroup.Done()
 	for {
-		select {
-		case domain := <-channel:
-			if len(channel) > 0 {
-				statOverall++
-				response, error := client.Get(string(strings.Join([]string{"http://", domain}, "")))
-				if error != nil {
-					statDomainError++
-					break
-				}
-				defer response.Body.Close()
-				body, error := ioutil.ReadAll(response.Body)
-				if error != nil {
-					statHttpError++
-					break
-				}
-				applyRegexps(body, domain)
-			} else {
-				statWorkersCount--
-				log.Info("Shutting down worker, (%d) workers left", statWorkersCount)
-				return
-			}
-		default:
-			statWorkersCount--
-			log.Info("Shutting down worker, (%d) workers left", statWorkersCount)
-			return
+		//		select {
+		//		case
+		domain := <-channel
+		//			if len(channel) > 0 {
+		statOverall++
+		response, error := client.Get(string(strings.Join([]string{"http://", domain}, "")))
+		if error != nil {
+			statDomainError++
+			break
 		}
+		defer response.Body.Close()
+		body, error := ioutil.ReadAll(response.Body)
+		if error != nil {
+			statHttpError++
+			break
+		}
+		applyRegexps(body, domain)
+		//			} else {
+		//				statWorkersCount--
+		//				log.Info("Shutting down worker, (%d) workers left", statWorkersCount)
+		//				return
+		//			}
+		//		default:
+		//			statWorkersCount--
+		//			log.Info("Shutting down worker, (%d) workers left", statWorkersCount)
+		//			return
+		//		}
 	}
 }
 

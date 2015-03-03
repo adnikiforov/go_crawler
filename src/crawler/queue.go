@@ -10,6 +10,7 @@ var (
 )
 
 func startQueue() {
+	defer waitGroup.Done()
 	log.Info("Starting up queue...")
 	csvfile, error := os.Open(CSV_FILE_LOCATION)
 	if error != nil {
@@ -29,9 +30,12 @@ func startQueue() {
 	}
 
 	queueSize := len(rawCSVdata)
-	queueChannel = make(chan string, queueSize)
+
 	log.Info("Queue size %d", queueSize)
-	for _, each := range rawCSVdata {
+	c := 0
+	for i, each := range rawCSVdata {
+		c++
+		log.Info("Write %d elem into channel (%d overall)", i, c)
 		queueChannel <- each[0]
 	}
 	close(queueChannel)

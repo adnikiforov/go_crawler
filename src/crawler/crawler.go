@@ -47,17 +47,16 @@ func Run() {
 	updateKeyList()
 
 	log.Info("Starting up...")
-	startQueue()
+	waitGroup.Add(WCOUNT + 2)
+	queueChannel = make(chan string, 10000)
+	go startQueue()
+	startWorkers()
 	updateQueueSize()
 	startDb()
 
-	waitGroup.Add(WCOUNT + 1)
-	startWorkers()
-
 	ticker := time.NewTicker(time.Millisecond * 10000)
 	go func() {
-		for t := range ticker.C {
-			t.String() //Prevent compile "variable not used" error
+		for range ticker.C {
 			updateQueueSize()
 			printStat()
 		}
